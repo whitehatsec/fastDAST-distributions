@@ -1,0 +1,72 @@
+# Download release packages from lastest id-dast build
+# Publish to distribution releases
+
+resources:
+  pipelines:
+  - pipeline: fastDAST  # Name of the pipeline resource
+    source: fastDAST  # Name of the pipeline referenced by the pipeline resource
+
+jobs:
+- job: Publish
+  pool:
+    vmImage: ubuntu-latest
+  variables:
+    imageName: 'whsinnovations/fast-dast-api'
+  steps:
+    - download: fastDAST
+      artifact: linux
+      patterns: "*.deb"
+      displayName: 'Download VantagePrevent Debian Artifact'
+    - download: fastDAST
+      artifact: darwin
+      patterns: "*.pkg"
+      displayName: 'Download VantagePrevent macOS Artifact'
+    - download: fastDAST
+      artifact: windows
+      patterns: "*.msi"
+      displayName: 'Download VantagePrevent Windows Artifact'
+    - bash: |
+        thisFile=$(ls *.deb | head -1)
+        GIT_TAG=$(dpkg --info $thisFile | grep 'Version:' | sed 's/\WVersion:\W/v/g')
+        echo "##vso[task.setvariable variable=GIT_TAG]$GIT_TAG"
+        echo "Tag is ${GIT_TAG}"
+      workingDirectory: $(Pipeline.Workspace)/fastDAST/linux
+      displayName: 'Generate Tag'
+    - task: GitHubRelease@1
+      displayName: 'Push to Release folder'
+      inputs:
+        gitHubConnection: github.com
+        repositoryName: whitehatsec/fastDAST-distributions
+        action: create
+        tagSource: userSpecifiedTag
+        target: $(Build.SourceVersion)
+        tag: $(GIT_TAG)
+        title: Release $(GIT_TAG)
+        addChangeLog: false
+        isPreRelease: false
+        assetUploadMode: replace
+        assets: |
+          $(Pipeline.Workspace)/fastDAST/darwin/*
+          $(Pipeline.Workspace)/fastDAST/linux/*
+          $(Pipeline.Workspace)/fastDAST/windows/*
+    - bash: |
+        mkdir -p ./dist/docker
+        cp $(Pipeline.Workspace)/fastDAST/linux/fastDAST-Ubuntu-20_04.deb ./dist/docker
+        docker build -t $(imageName):${GIT_TAG} -t $(imageName):latest --build-arg DEB_NAME=fastDAST-Ubuntu-20_04.deb --no-cache -f ./docker/Ubuntu-20_04.Dockerfile dist/docker
+        rm -rf ./dist/docker
+      displayName: 'Build Docker Image'
+      timeoutInMinutes: 90
+    - task: Docker@2
+      displayName: 'Login to Docker Hub'
+      inputs:
+        command: login
+        containerRegistry: dockerhubpublic
+    - task: Docker@2
+      displayName: 'Push image to Docker Hub'
+      inputs:
+        command: push
+        containerRegistry: dockerhubpublic
+        repository: $(imageName)
+        tags: |
+          latest
+          $(release_version)
