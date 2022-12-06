@@ -10,6 +10,6 @@ RUN rm fastDAST.deb
 
 RUN fast-dast-api --init
 
-ENV WHITEHAT_LICENSE_KEY=""
+ENV FASTDAST_LICENSE_KEY=""
 EXPOSE 27374
 ENTRYPOINT [ "/usr/local/bin/fast-dast-api" ]
