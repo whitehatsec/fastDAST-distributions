@@ -15,15 +15,27 @@ jobs:
   steps:
     - download: fastDAST
       artifact: linux
-      patterns: "*.deb"
+      patterns: |
+        *.deb
+        *.deb.md5
+        *.zip
+        *.zip.md5
       displayName: 'Download fastDAST Debian Artifact'
     - download: fastDAST
       artifact: darwin
-      patterns: "*.pkg"
+      patterns: |
+        *.pkg
+        *.pkg.md5
+        *.zip
+        *.zip.md5
       displayName: 'Download fastDAST macOS Artifact'
     - download: fastDAST
       artifact: windows
-      patterns: "*.msi"
+      patterns: |
+        *.msi
+        *.msi.md5
+        *.zip
+        *.zip.md5
       displayName: 'Download fastDAST Windows Artifact'
     - bash: |
         thisFile=$(ls *.deb | head -1)
